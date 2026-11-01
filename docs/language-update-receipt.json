@@ -1,0 +1,40 @@
+{
+  "captured_at": "2026-11-01T09:08:15.154Z",
+  "inventory_main": "3f05f51a8355be962d84458fc955c8c7ee2f32eb",
+  "pr_url": "https://github.com/monuminu/kirana-saathi-demo/pull/1",
+  "pr_commit": "432e04483b10506400e98139652ebd7286af6233",
+  "artifact_sha256": "c1e904fe172b5ce0ae06a39b12dc234dadcfa15d096d9df89ad15ec37053ef95",
+  "original_antigravity_commit": "2ef6a473f60e4bd18d83d9655b8bf93712bf869e",
+  "tests": {
+    "console": 120,
+    "inventory_baseline_passing": 49,
+    "intentional_baseline_failures": 1,
+    "fixed_inventory_passing": 50
+  },
+  "api_language_probes": [
+    {
+      "language": "hi",
+      "passed": true,
+      "audio_bytes": 166560
+    },
+    {
+      "language": "en",
+      "passed": true,
+      "audio_bytes": 243360
+    }
+  ],
+  "english_brief": {
+    "passed": true,
+    "bilingual_brief": true,
+    "english_readback_valid": true,
+    "english_consent": "approve",
+    "timestamp": "2026-11-01T09:05:31.792Z"
+  },
+  "browser": {
+    "azure": true,
+    "fixed_preview": true,
+    "console": true,
+    "mobile": true
+  },
+  "attribution": "Original arithmetic fix by managed Antigravity; later interface/prompt update by this development task. No additional coding agent or PR."
+}

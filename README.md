@@ -37,6 +37,10 @@ The production start command serves the built console and API together on 127.0.
 
 ## Demo
 
+Both the [Azure inventory app](https://thankful-bay-05dfcb500.1.azurestaticapps.net/) and this help console have a top-right Hindi/English switch. It translates labels, product names/units, reports and progress while preserving stock, form input, jobs and original transcripts. The preference survives reload. Links carry `?lang=hi` or `?lang=en`; you can bookmark an English demonstration directly.
+
+The selected console language also configures Gemini's speech. Changing language during a call pauses the microphone and screen sharing. Press **Start conversation / बात शुरू करें** to continue in the new language. A confirmed repair keeps running. Bug briefs remain bilingual, and the backend still requires complete read-back and explicit approval of the current version.
+
 1. Reset the companion kirana app to synthetic seed data. Sugar starts at 15 kg.
 2. Record a 2 kg sale. The deliberately faulty source produces 17 kg.
 3. Open app help, start a conversation, and share the app screen. Attach a frame with **तस्वीर जोड़ें** if it should accompany the repair agent.
@@ -74,3 +78,5 @@ The companion inventory app is deployed separately to Azure Static Web Apps. Thi
 Read the [demo runbook](docs/demo-runbook.md), [verification report](docs/verification-report.md), [Markdown friction log](docs/friction-log.md), [CSV log](docs/friction-log.csv), [roadmap brief](docs/roadmap-brief.md) and [prompt/skill revisions](docs/prompt-revisions.json). The actual managed repair produced [draft PR #1](https://github.com/monuminu/kirana-saathi-demo/pull/1) and an exact-commit local preview. The first continuous browser wait failed after missing browser setup; recovery of that same publication passed.
 
 A synthesized Hindi replay is an automated audio fixture, not evidence that a shopkeeper's physical microphone or accent was tested. AI Studio Build/export work requires a signed-in browser; unexecuted steps are explicitly marked untested.
+
+The later language update is documented in [audience language update](docs/language-update.md). It preserves the original managed Antigravity arithmetic fix and records the refreshed preview's current commit and artifact separately from the initial run.

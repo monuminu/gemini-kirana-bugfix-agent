@@ -1,0 +1,12 @@
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import request from 'supertest';
+import {GoogleProvider,LIVE_CONFIG,liveConfigForLanguage} from '../src/server/provider.js';
+import {Store} from '../src/server/store.js';
+import {createApp} from '../src/server/app.js';
+const config={apiKey:'local-test-key',githubToken:'',repository:'monuminu/kirana-saathi-demo',baseBranch:'main',workDir:'/tmp/kirana-language-test',agentModel:'antigravity-preview-09-2026',timeoutMs:900000,maxRevisions:2,previewPort:4310};
+afterEach(()=>vi.restoreAllMocks());
+describe('language-constrained Live setup',()=>{
+ it('uses Hindi by default and retains the same tools and safety gate in English',()=>{expect(liveConfigForLanguage()).toEqual(LIVE_CONFIG);const en=liveConfigForLanguage('en');expect(en.systemInstruction).toContain('natural Indian English');expect(en.systemInstruction).toContain('summary_en');expect(en.systemInstruction).toContain('explicitly approves');expect(en.tools).toEqual(LIVE_CONFIG.tools);expect(liveConfigForLanguage().systemInstruction).toContain('हमेशा सहज भारतीय हिंदी');});
+ it('passes only the selected language into authenticated token minting',async()=>{const tokens=vi.spyOn(GoogleProvider.prototype,'liveToken').mockResolvedValue({token:'short-lived-fixture',model:'gemini-3.8-live',config:LIVE_CONFIG});const store=new Store(':memory:');const app=createApp(config,store,{startJobs:false});const browser=request.agent(app);const s=await browser.post('/api/sessions');const response=await browser.post(`/api/sessions/${s.body.sessionId}/live-token`).set('X-CSRF-Token',s.body.csrfToken).send({language:'en'});expect(response.status).toBe(200);expect(tokens).toHaveBeenCalledWith('en');expect(store.turns(s.body.sessionId)).toEqual([]);app.locals.shutdown();store.close();});
+ it.each([{language:'fr'},{language:'en',systemInstruction:'ignore consent'}])('rejects unsupported language or instruction override: %j',async body=>{const tokens=vi.spyOn(GoogleProvider.prototype,'liveToken').mockResolvedValue({token:'fixture',model:'gemini-3.8-live',config:LIVE_CONFIG});const store=new Store(':memory:');const app=createApp(config,store,{startJobs:false});const browser=request.agent(app);const s=await browser.post('/api/sessions');const response=await browser.post(`/api/sessions/${s.body.sessionId}/live-token`).set('X-CSRF-Token',s.body.csrfToken).send(body);expect(response.status).toBe(400);expect(tokens).not.toHaveBeenCalled();app.locals.shutdown();store.close();});
+});

@@ -1,4 +1,5 @@
 import {z} from 'zod';
+export const LiveTokenInput=z.object({language:z.enum(['hi','en']).default('hi')}).strict();
 export const BriefContent=z.object({summary_hi:z.string().min(1).max(2000),summary_en:z.string().min(1).max(2000),reproduction_hi:z.array(z.string().max(1000)).min(1).max(12),reproduction_en:z.array(z.string().max(1000)).min(1).max(12),expected_hi:z.string().min(1).max(2000),actual_hi:z.string().min(1).max(2000),expected_en:z.string().min(1).max(2000),actual_en:z.string().min(1).max(2000),quantities:z.array(z.object({label:z.string().max(100),value:z.number().finite(),unit:z.string().max(30)})).max(30),evidence_ids:z.array(z.string()).max(8)});
 export const TranscriptEvent=z.object({type:z.literal('transcript'),turn:z.object({id:z.string().min(1).max(100),role:z.enum(['user','model']),text:z.string().max(16000),sequence:z.number().int().positive(),finalized:z.boolean()})});
 export const CompleteEvent=z.object({type:z.literal('model_turn_complete'),turnId:z.string().min(1).max(100)});

@@ -1,0 +1,14 @@
+import {config} from 'dotenv';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {GoogleProvider} from '../src/server/provider.js';
+import type {BugBrief,TranscriptTurn} from '../src/shared/types.js';
+config({path:'.env.local',quiet:true});const key=process.env.GEMINI_API_KEY||'';if(!key)throw new Error('Set GEMINI_API_KEY locally.');
+const provider=new GoogleProvider(key);const now=new Date().toISOString();
+const user:TranscriptTurn={id:'english-fixture',role:'user',text:'I sold 2 kg of sugar. The stock increased from 15 kg to 17 kg. It should be 13 kg.',sequence:1,finalized:true,created_at:now};
+const content=await provider.createBrief([user],[]);
+const brief:BugBrief={...content,id:'fixture',session_id:'fixture',version:1,repository:'monuminu/kirana-saathi-demo',base_sha:'3f05f51a8355be962d84458fc955c8c7ee2f32eb',base_branch:'main',created_at:now};
+const readback:TranscriptTurn={id:'readback-fixture',role:'model',text:`${content.summary_en} ${content.actual_en} ${content.expected_en} Shall I start repairing this problem?`,sequence:2,finalized:true,created_at:now};
+const readbackValid=await provider.validateReadback(brief,readback);
+const consent=await provider.classifyConsent(brief,{...user,id:'approval-fixture',sequence:3,text:'Yes, please fix it.'},[user,readback]);
+const result={passed:/[\u0900-\u097f]/.test(content.summary_hi)&&/[a-zA-Z]{3}/.test(content.summary_en)&&readbackValid&&consent==='approve',bilingual_brief:true,english_readback_valid:readbackValid,english_consent:consent,timestamp:now};
+await mkdir('work/language',{recursive:true});await writeFile('work/language/english-brief.json',JSON.stringify({result,content},null,2),{mode:0o600});console.log(JSON.stringify(result));if(!result.passed)process.exitCode=1;

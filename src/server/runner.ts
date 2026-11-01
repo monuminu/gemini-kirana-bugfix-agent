@@ -97,9 +97,11 @@ export async function runJobWithDependencies(job:FixJob,report:BugBrief,turns:Tr
   try {
     alive();
     if(job.pr_url&&job.commit_sha&&job.branch&&job.pr_number) {
+      const revision=job.preview_revision;
+      if(revision&&(revision.commit_sha!==job.commit_sha||!/^[a-f0-9]{40}$/.test(revision.base_sha)))throw new Error('Published preview revision does not match its recorded commit.');
       update({status:'verifying',stage:'resuming_published_patch',message_hi:'सहेजे हुए सुधार की जाँच वापस शुरू हो रही है।'});
       const savedPatch=await fs.readFile(path.join(jobDir,'candidate.patch'),'utf8');
-      const verified=await deps.verify(config.repository,report.base_sha,savedPatch,jobDir,control);
+      const verified=await deps.verify(config.repository,revision?.base_sha??report.base_sha,savedPatch,jobDir,control);
       update({verification:verified.verification});
       await finishPreview({branch:job.branch,commit_sha:job.commit_sha,pr_number:job.pr_number,pr_url:job.pr_url},verified);return;
     }
