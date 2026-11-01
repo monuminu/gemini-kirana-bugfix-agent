@@ -35,6 +35,7 @@ export class LiveConsole {
   private live?:Session;
   private speaker?:SpeakerQueue;
   private microphone?:MicrophoneCapture;
+  private wantMicrophone=false;
   private turns=new TurnAccumulator();
   private gate=new ModelTurnGate();
   private toolLedger=new ToolCallLedger();
@@ -144,10 +145,10 @@ export class LiveConsole {
     if(epoch!==this.epoch || !this.wantConnected){session.close();return;}
     this.retryCount=0;this.update({connection:'connected',error:undefined});
     if(!this.microphone){
-      const microphone=new MicrophoneCapture();this.microphone=microphone;
-      try{await microphone.start(bytes=>{if(this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});
-        if(this.wantConnected && epoch===this.epoch)this.update({microphone:'listening'});else microphone.stop();
-      }catch(cause){microphone.stop();if(!this.wantConnected || epoch!==this.epoch)return;if(this.microphone===microphone)this.microphone=undefined;this.update({microphone:'paused'});this.showError(cause);}
+      const microphone=new MicrophoneCapture();this.microphone=microphone;this.wantMicrophone=true;
+      try{await microphone.start(bytes=>{if(this.wantConnected && this.microphone===microphone && this.wantMicrophone && this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});
+        if(this.wantConnected && this.microphone===microphone){microphone.setEnabled(this.wantMicrophone);this.update({microphone:this.wantMicrophone?'listening':'paused'});}else microphone.stop();
+      }catch(cause){microphone.stop();if(!this.wantConnected || this.microphone!==microphone)return;this.microphone=undefined;this.wantMicrophone=false;this.update({microphone:'paused'});this.showError(cause);}
     }
   }
   private scheduleReconnect():void {
@@ -252,13 +253,13 @@ export class LiveConsole {
   }
   async toggleMicrophone():Promise<void>{
     if(!this.live || this.snapshot.connection!=='connected')return;
-    if(this.snapshot.microphone==='listening'){this.microphone?.setEnabled(false);this.sendRealtime({audioStreamEnd:true});this.update({microphone:'paused'});return;}
-    const epoch=this.epoch,microphone=this.microphone || new MicrophoneCapture();
+    if(this.snapshot.microphone==='listening'){this.wantMicrophone=false;this.microphone?.setEnabled(false);this.sendRealtime({audioStreamEnd:true});this.update({microphone:'paused'});return;}
+    const microphone=this.microphone || new MicrophoneCapture();this.wantMicrophone=true;
     try{
-      if(!this.microphone){this.microphone=microphone;await microphone.start(bytes=>{if(epoch===this.epoch && this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});}
-      if(!this.wantConnected || epoch!==this.epoch){microphone.stop();return;}
-      microphone.setEnabled(true);this.update({microphone:'listening',error:undefined});
-    }catch(cause){microphone.stop();if(!this.wantConnected || epoch!==this.epoch)return;if(this.microphone===microphone)this.microphone=undefined;this.showError(cause);}
+      if(!this.microphone){this.microphone=microphone;await microphone.start(bytes=>{if(this.wantConnected && this.microphone===microphone && this.wantMicrophone && this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});}
+      if(!this.wantConnected || this.microphone!==microphone){microphone.stop();return;}
+      microphone.setEnabled(this.wantMicrophone);this.update({microphone:this.wantMicrophone?'listening':'paused',error:undefined});
+    }catch(cause){microphone.stop();if(!this.wantConnected || this.microphone!==microphone)return;this.microphone=undefined;this.wantMicrophone=false;this.update({microphone:'paused'});this.showError(cause);}
   }
   async startVisual(source:'camera'|'screen'):Promise<void>{
     if(this.snapshot.connection!=='connected')return;
@@ -305,7 +306,7 @@ export class LiveConsole {
     if(this.reconnectTimer)clearTimeout(this.reconnectTimer);this.reconnectTimer=undefined;
     const live=this.live;this.live=undefined;try{live?.sendRealtimeInput({audioStreamEnd:true});}catch{}live?.close();
     this.toolLedger.cancel([...this.pendingTools.keys()]);for(const request of this.pendingTools.values())if(request.name!=='dispatch_bug_fix')request.abort.abort();
-    this.gate.interrupt();this.activeModelId=undefined;this.readbackEpoch++;this.microphone?.stop();this.microphone=undefined;this.speaker?.close();this.speaker=undefined;this.stopVisual();
+    this.gate.interrupt();this.activeModelId=undefined;this.readbackEpoch++;this.wantMicrophone=false;this.microphone?.stop();this.microphone=undefined;this.speaker?.close();this.speaker=undefined;this.stopVisual();
   }
   disconnect():void {this.wantConnected=false;this.cleanupLive();this.update({connection:'idle',microphone:'off',speaking:false,readbackComplete:false});void this.persistEvent({type:'interrupted'}).catch(()=>{});}
   destroy():void {this.destroyed=true;this.wantConnected=false;this.cleanupLive();this.jobEvents?.close();this.jobEvents=undefined;}

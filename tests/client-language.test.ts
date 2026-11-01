@@ -24,7 +24,8 @@ function browser(search='',stored:string|null=null) {
   const storage = new Map<string,string>(stored ? [['kirana-saathi.language.v1',stored]] : []);
   const store={getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value)};
   class AudioContext { state='running';currentTime=0;destination={};audioWorklet={addModule:async()=>{}};resume=async()=>{};close=async()=>{this.state='closed';};createMediaStreamSource=()=>({connect:()=>{},disconnect:()=>{}});createGain=()=>({gain:{value:0},connect:()=>{},disconnect:()=>{}}); }
-  class AudioWorkletNode {port={onmessage:null,postMessage:()=>{}};connect=()=>{};disconnect=()=>{};}
+  const worklets:Array<{port:{onmessage:((event:MessageEvent<ArrayBuffer>)=>void)|null}}> = [];
+  class AudioWorkletNode {port:{onmessage:((event:MessageEvent<ArrayBuffer>)=>void)|null;postMessage:()=>void}={onmessage:null,postMessage:()=>{}};connect=()=>{};disconnect=()=>{};constructor(){worklets.push(this);}}
   const track={enabled:true,stop:vi.fn()};
   const location={search,href:`http://127.0.0.1:4300/${search}`};
   vi.stubGlobal('window',{location,AudioContext,localStorage:store,history:{state:null,replaceState:(_state:unknown,_unused:string,value:URL)=>{location.href=value.href;location.search=value.search;}}});
@@ -35,7 +36,7 @@ function browser(search='',stored:string|null=null) {
   vi.stubGlobal('document',{documentElement:{lang:''},title:''});
   const streams:Array<{onmessage:((event:MessageEvent<string>)=>void)|null;close:()=>void;url:string}>=[];
   vi.stubGlobal('EventSource',class {onmessage=null;onerror=null;close=vi.fn();constructor(readonly url:string){streams.push(this);}});
-  return {storage,track,streams};
+  return {storage,track,streams,worklets};
 }
 function installRequests(overrides?:{liveToken?:()=>Promise<Response>;events?:(body:Record<string,unknown>)=>Promise<Response>}) {
   const requests:Array<{path:string;request:RequestInit}>=[];
@@ -171,6 +172,59 @@ describe('console language lifecycle',()=>{
     const retry=console.toggleMicrophone();changeLanguage(console,'en');await console.connect();reject(denied);await retry;
     expect(snapshot).toMatchObject({language:'en',connection:'connected',microphone:'listening',error:undefined});
     expect(hardware.track.stop).not.toHaveBeenCalled();
+  });
+  it('forwards retained microphone retry audio to the new Live session after reconnect',async()=>{
+    const hardware=browser();installRequests();
+    const stream={getTracks:()=>[hardware.track],getAudioTracks:()=>[hardware.track]} as unknown as MediaStream;
+    vi.stubGlobal('navigator',{mediaDevices:{getUserMedia:vi.fn().mockRejectedValueOnce(new DOMException('No permission','NotAllowedError')).mockResolvedValue(stream)}});
+    const sessions=[fakeSession(),fakeSession()],parameters:LiveConnectParameters[]=[];
+    sdk.connect.mockImplementation(async(value:LiveConnectParameters)=>{parameters.push(value);value.callbacks?.onmessage?.(message({setupComplete:{}}));return sessions[parameters.length-1];});
+    let snapshot:ConsoleSnapshot=initialSnapshot;const console=controller(value=>snapshot=value);await console.connect();await console.toggleMicrophone();
+    const pcm=new MessageEvent<ArrayBuffer>('message',{data:new Uint8Array([16,0]).buffer});
+    hardware.worklets[0].port.onmessage?.(pcm);
+    expect(sessions[0].sendRealtimeInput).toHaveBeenCalledWith({audio:{data:'EAA=',mimeType:'audio/pcm;rate=16000'}});
+    parameters[0].callbacks?.onmessage?.(message({goAway:{timeLeft:'1s'}}));
+    await vi.waitFor(()=>expect(snapshot.connection).toBe('connected'),{timeout:1500});
+    expect(parameters).toHaveLength(2);expect(snapshot.microphone).toBe('listening');
+    hardware.worklets[0].port.onmessage?.(pcm);
+    expect(sessions[1].sendRealtimeInput).toHaveBeenCalledWith({audio:{data:'EAA=',mimeType:'audio/pcm;rate=16000'}});
+    expect(hardware.track.stop).not.toHaveBeenCalled();
+  });
+  it.each(['initial','retry'] as const)('keeps %s microphone permission completion usable when the same capture reconnects',async(kind)=>{
+    const hardware=browser();installRequests();let release!:(stream:MediaStream)=>void;
+    const permission=new Promise<MediaStream>(resolve=>release=resolve);
+    const stream={getTracks:()=>[hardware.track],getAudioTracks:()=>[hardware.track]} as unknown as MediaStream;
+    const media=vi.fn();if(kind==='retry')media.mockRejectedValueOnce(new DOMException('No permission','NotAllowedError'));media.mockReturnValueOnce(permission);
+    vi.stubGlobal('navigator',{mediaDevices:{getUserMedia:media}});
+    const sessions=[fakeSession(),fakeSession()],parameters:LiveConnectParameters[]=[];
+    sdk.connect.mockImplementation(async(value:LiveConnectParameters)=>{parameters.push(value);value.callbacks?.onmessage?.(message({setupComplete:{}}));return sessions[parameters.length-1];});
+    let snapshot:ConsoleSnapshot=initialSnapshot;const console=controller(value=>snapshot=value);
+    let starting:Promise<void>;if(kind==='retry'){await console.connect();starting=console.toggleMicrophone();}else starting=console.connect();
+    await vi.waitFor(()=>expect(snapshot.connection).toBe('connected'));
+    parameters[0].callbacks?.onmessage?.(message({goAway:{timeLeft:'1s'}}));
+    await vi.waitFor(()=>expect(parameters).toHaveLength(2),{timeout:1500});
+    release(stream);await starting;
+    expect(snapshot).toMatchObject({connection:'connected',microphone:'listening',error:undefined});
+    expect(hardware.track.stop).not.toHaveBeenCalled();
+    hardware.worklets[0].port.onmessage?.(new MessageEvent<ArrayBuffer>('message',{data:new Uint8Array([16,0]).buffer}));
+    expect(sessions[1].sendRealtimeInput).toHaveBeenCalledWith({audio:{data:'EAA=',mimeType:'audio/pcm;rate=16000'}});
+  });
+  it('preserves a user pause when pending microphone permission completes after reconnect',async()=>{
+    const hardware=browser();installRequests();let release!:(stream:MediaStream)=>void;
+    const permission=new Promise<MediaStream>(resolve=>release=resolve);
+    const stream={getTracks:()=>[hardware.track],getAudioTracks:()=>[hardware.track]} as unknown as MediaStream;
+    vi.stubGlobal('navigator',{mediaDevices:{getUserMedia:()=>permission}});
+    const sessions=[fakeSession(),fakeSession()],parameters:LiveConnectParameters[]=[];
+    sdk.connect.mockImplementation(async(value:LiveConnectParameters)=>{parameters.push(value);value.callbacks?.onmessage?.(message({setupComplete:{}}));return sessions[parameters.length-1];});
+    let snapshot:ConsoleSnapshot=initialSnapshot;const console=controller(value=>snapshot=value);const starting=console.connect();
+    await vi.waitFor(()=>expect(snapshot.connection).toBe('connected'));parameters[0].callbacks?.onmessage?.(message({goAway:{timeLeft:'1s'}}));
+    await vi.waitFor(()=>expect(parameters).toHaveLength(2),{timeout:1500});
+    await console.toggleMicrophone();await console.toggleMicrophone();release(stream);await starting;
+    expect(snapshot.microphone).toBe('paused');expect(hardware.track.enabled).toBe(false);expect(hardware.track.stop).not.toHaveBeenCalled();
+    const pcm=new MessageEvent<ArrayBuffer>('message',{data:new Uint8Array([16,0]).buffer});hardware.worklets[0].port.onmessage?.(pcm);
+    expect(sessions[1].sendRealtimeInput).not.toHaveBeenCalledWith({audio:{data:'EAA=',mimeType:'audio/pcm;rate=16000'}});
+    await console.toggleMicrophone();hardware.worklets[0].port.onmessage?.(pcm);
+    expect(sessions[1].sendRealtimeInput).toHaveBeenCalledWith({audio:{data:'EAA=',mimeType:'audio/pcm;rate=16000'}});
   });
 });
 
