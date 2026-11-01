@@ -1,8 +1,56 @@
 # किराना साथी — Hindi voice bug repair
 
-A local developer tool that listens to a Hindi bug report, receives screen/camera frames through Gemini Live, prepares an agreed bug brief, and dispatches managed Antigravity to repair a public kirana inventory application. The backend independently verifies the patch before creating a draft GitHub PR and an isolated preview.
+A local developer tool that listens to a Hindi or English bug report, receives screen/camera frames through Gemini Live, prepares an agreed bug brief, and dispatches managed Antigravity to repair a public kirana inventory application. The backend independently verifies the patch before creating a draft GitHub PR and an isolated preview.
 
 Inventory: [public repository](https://github.com/monuminu/kirana-saathi-demo) and [Azure demo](https://thankful-bay-05dfcb500.1.azurestaticapps.net/).
+
+## App demo video
+
+**[▶ Watch / download the Kirana Saathi app demo (MP4)](https://github.com/monuminu/gemini-kirana-bugfix-agent/releases/download/demo-video-2026-11-01/kirana-saathi-app-demo.mp4)**
+
+The original recording is approximately **7 minutes** long. It is hosted unchanged as a [GitHub release asset](https://github.com/monuminu/gemini-kirana-bugfix-agent/releases/tag/demo-video-2026-11-01), so cloning either source project does not download the large video. Open the MP4 in your browser or download it to play locally.
+
+## Architecture and workflow
+
+The shopkeeper records inventory transactions in the kirana app. The companion voice console handles bug reporting and repair progress. Both interfaces have a top-right Hindi/English switch.
+
+```mermaid
+flowchart TD
+    Merchant["Shopkeeper · Hindi / English"] --> Inventory["Kirana inventory app<br/>Azure Static Web Apps or localhost:4301"]
+    Inventory <-->|"Stock and movement ledger"| Storage[("Browser localStorage")]
+    Inventory -->|"App help"| Console["Voice console · localhost:4300<br/>Microphone, screen / camera, or text"]
+    Console <-->|"Audio, selected visual stream, replies"| Live["Gemini Live API"]
+    Live -->|"Tool calls forwarded by the console"| Backend["Local Node.js / Express backend<br/>Versioned brief and explicit approval"]
+    Backend <-->|"Structured bug brief"| Flash["Gemini Flash"]
+    Backend <-->|"Reports, consent, job state, recovery"| Database[("SQLite")]
+    Backend -->|"Confirmed brief and selected evidence"| Agent["Managed Antigravity sandbox<br/>Clone recorded commit, diagnose, repair"]
+    Agent -->|"publish_patch · backend retrieves the patch"| Verify["Backend-owned offline Docker verification<br/>Original tests, type checking, build"]
+    Verify -->|"Passing checks and current base commit"| PR["GitHub branch and draft pull request"]
+    PR -->|"Build the exact PR commit"| Preview["Separate local preview · localhost:4310<br/>Replay sugar sale: 15 − 2 = 13 kg"]
+```
+
+1. **Demonstrate the bug.** Reset the inventory app, then sell 2 kg of sugar from 15 kg. The deliberately faulty app shows 17 kg.
+2. **Describe it in Hindi or English.** Open app help, speak or type the problem, and optionally share the app screen or webcam. Explicitly attach an image if it should be sent to the repair agent.
+3. **Confirm the scope.** Gemini reads back the current bug brief in the selected language. A subsequent explicit approval, such as “हाँ, इसे ठीक कर दीजिए,” authorizes that exact report version. A correction requires a fresh read-back and approval.
+4. **Run the repair.** Antigravity clones the allowed repository at the recorded commit, reproduces the failure, diagnoses the code, changes it, and runs checks. The conversation can continue while the background job runs.
+5. **Verify and publish.** The backend retrieves the proposed patch and independently runs the original tests, type checking, and build in an offline Docker container. Failed checks, unrelated changes, a stale base, or cancellation stop publication. A passing candidate becomes a branch and one draft PR.
+6. **Prove the corrected behavior.** A separate container builds the exact PR commit. Its artifact must match the verified candidate, and a browser replay must show **13 kg**, including after reload, before the preview is ready. Merging the PR remains a human review step.
+
+| Component | Where it runs | Responsibility |
+| --- | --- | --- |
+| Kirana inventory app | Browser; hosted on Azure Static Web Apps or served locally | Product search, receipts, sales, low-stock alerts, ledger, synthetic browser storage |
+| Voice console | Local browser | Audio capture/playback, one visual stream at up to 1 frame/second, transcripts, evidence selection, tool forwarding |
+| Gemini Live (`gemini-3.8-live`) | Gemini API | Real-time voice/vision conversation and four asynchronous repair tools |
+| Express backend | Local machine, bound to `127.0.0.1` | Ephemeral tokens, report-version approval, dispatch, status, cancellation, verification, GitHub publication |
+| Gemini Flash (`gemini-3.8-flash`) | Gemini API | Schema-validated bilingual bug briefs and contextual approval classification |
+| SQLite | Local machine | Reports, transcript turns, consent, jobs, provider IDs, timings, restart recovery |
+| Antigravity (`antigravity-preview-09-2026`) | Fresh managed remote sandbox | Code diagnosis and repair from the confirmed brief, recorded source commit, and selected evidence |
+| Docker verifier and preview | Local machine | Independent checks without secrets or network; separate preview of the exact published commit |
+| GitHub | Public inventory repository | Repair branch, sanitized test evidence, draft PR for review |
+
+The browser connects directly to Gemini Live using a constrained ephemeral token issued by the backend. Live's `prepare_bug_fix`, `dispatch_bug_fix`, `get_fix_status`, and `cancel_bug_fix` calls are forwarded to the backend with their original call IDs. The long-lived Gemini key and GitHub write credential stay on the backend; Antigravity submits a patch through `publish_patch` rather than pushing directly.
+
+The Azure site remains the reproducible buggy baseline. The repair preview is a separate local URL, and neither PR creation nor merging automatically redeploys Azure. See [runner details](docs/runner.md) for the execution, verification, publication, and recovery contracts.
 
 ## Run locally
 
@@ -39,7 +87,7 @@ The production start command serves the built console and API together on 127.0.
 
 Both the [Azure inventory app](https://thankful-bay-05dfcb500.1.azurestaticapps.net/) and this help console have a top-right Hindi/English switch. It translates labels, product names/units, reports and progress while preserving stock, form input, jobs and original transcripts. The preference survives reload. Links carry `?lang=hi` or `?lang=en`; you can bookmark an English demonstration directly.
 
-The selected console language also configures Gemini's speech. Changing language during a call pauses the microphone and screen sharing. Press **Start conversation / बात शुरू करें** to continue in the new language. A confirmed repair keeps running. Bug briefs remain bilingual, and the backend still requires complete read-back and explicit approval of the current version.
+The selected console language also configures Gemini's speech. Changing language during a call pauses the microphone and screen sharing. Press **Start talking / बात शुरू करें** to continue in the new language. A confirmed repair keeps running. Bug briefs remain bilingual, and the backend still requires complete read-back and explicit approval of the current version.
 
 1. Reset the companion kirana app to synthetic seed data. Sugar starts at 15 kg.
 2. Record a 2 kg sale. The deliberately faulty source produces 17 kg.
