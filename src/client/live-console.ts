@@ -3,15 +3,17 @@ import type { BugBrief, FixJob } from '../shared/types.js';
 import { MicrophoneCapture, SpeakerQueue } from './audio.js';
 import { bytesToBase64 } from './audio-utils.js';
 import { extractLiveEvent, ModelTurnGate, ToolCallLedger, TurnAccumulator, type ClientTurn } from './event-utils.js';
+import { readLanguage, saveLanguage, updateLanguageQuery, isLanguage, localizeError, type Language } from './language.js';
 
 export type ConsoleConfig = { repository:string;baseBranch:string;demoUrl:string;configured:{gemini:boolean;github:boolean};models:{live:string;structured:string;agent:string} };
 export type ConsoleSnapshot = {
+  language:Language;languageRestartNeeded?:boolean;
   config?:ConsoleConfig;connection:'idle'|'connecting'|'connected'|'reconnecting'|'error';
   microphone:'off'|'listening'|'paused';speaking:boolean;visualSource:'none'|'camera'|'screen';
   frame?:string;attachingFrame:boolean;evidenceCount:number;evidenceIds:string[];turns:ClientTurn[];
   report?:BugBrief;readbackComplete:boolean;job?:FixJob;error?:string;
 };
-export const initialSnapshot:ConsoleSnapshot = {connection:'idle',microphone:'off',speaking:false,visualSource:'none',attachingFrame:false,evidenceCount:0,evidenceIds:[],turns:[],readbackComplete:false};
+export const initialSnapshot:ConsoleSnapshot = {language:'hi',connection:'idle',microphone:'off',speaking:false,visualSource:'none',attachingFrame:false,evidenceCount:0,evidenceIds:[],turns:[],readbackComplete:false};
 type BrowserSession = {sessionId:string;csrfToken:string;report?:BugBrief;job?:FixJob;turns?:ClientTurn[];evidence_ids?:string[]};
 const TOOL_NAMES = new Set(['prepare_bug_fix','dispatch_bug_fix','get_fix_status','cancel_bug_fix']);
 const TERMINAL = new Set(['completed','failed','cancelled','needs_attention']);
@@ -54,12 +56,21 @@ export class LiveConsole {
   private persistenceFailed=false;
   private setupReject?: (cause:Error)=>void;
 
-  constructor(private onUpdate:(snapshot:ConsoleSnapshot)=>void) {}
+  constructor(private onUpdate:(snapshot:ConsoleSnapshot)=>void,language:Language=readLanguage()) {this.snapshot={...initialSnapshot,language};saveLanguage(language);}
+  setLanguage(language:Language):void {
+    if(this.destroyed || !isLanguage(language) || language===this.snapshot.language)return;
+    const restart=this.wantConnected;
+    for(const role of ['user','model'] as const){const turn=this.turns.finalize(role);if(turn)this.recordTurn(turn);}
+    this.wantConnected=false;this.resumptionHandle=undefined;this.cleanupLive();
+    saveLanguage(language);updateLanguageQuery(language);
+    this.update({language,languageRestartNeeded:restart,connection:'idle',microphone:'off',speaking:false,readbackComplete:false,error:undefined});
+    if(this.browserSession || this.creatingSession)void this.persistEvent({type:'interrupted'}).catch(()=>{});
+  }
   private update(patch:Partial<ConsoleSnapshot>):void {
     this.snapshot={...this.snapshot,...patch};
     if(!this.destroyed)this.onUpdate(this.snapshot);
   }
-  private showError(cause:unknown):void {this.update({error:errorMessage(cause)});}
+  private showError(cause:unknown):void {this.update({error:localizeError(errorMessage(cause),this.snapshot.language)});}
   async initialize():Promise<void>{
     try{this.update({config:await this.request<ConsoleConfig>('/api/config')});await this.ensureSession();}catch(cause){this.showError(cause);}
   }
@@ -95,19 +106,23 @@ export class LiveConsole {
     if(this.wantConnected || this.destroyed)return;
     if(!navigator.mediaDevices || !window.AudioContext){this.showError(new Error('इस ब्राउज़र में आवाज़ की सुविधा उपलब्ध नहीं है। Chrome या Edge में localhost / HTTPS पर खोलें।'));return;}
     this.wantConnected=true;this.retryCount=0;this.resumptionHandle=undefined;
-    this.update({connection:'connecting',error:undefined,readbackComplete:false});
+    const epoch=++this.epoch;
+    this.update({connection:'connecting',error:undefined,readbackComplete:false,languageRestartNeeded:false});
     try{
       this.speaker=new SpeakerQueue(speaking=>this.update({speaking}),()=>{const id=this.gate.speakerDrained();if(id)void this.completeModelTurn(id);});
       await this.speaker.resume();
-      await this.openLive();
-    }catch(cause){if(!this.wantConnected)return;this.wantConnected=false;this.cleanupLive();this.update({connection:'error',microphone:'off'});this.showError(cause);}
+      if(!this.wantConnected || epoch!==this.epoch)return;
+      await this.openLive(epoch);
+    }catch(cause){if(!this.wantConnected || epoch!==this.epoch)return;this.wantConnected=false;this.cleanupLive();this.update({connection:'error',microphone:'off'});this.showError(cause);}
   }
-  private async openLive():Promise<void>{
-    const epoch=++this.epoch;
+  private async openLive(epoch=++this.epoch):Promise<void>{
+    const language=this.snapshot.language;
     const browserSession=await this.ensureSession();
-    const token=await this.request<{token:string;model:string;config:LiveConnectConfig}>(`/api/sessions/${browserSession.sessionId}/live-token`,{});
+    if(!this.wantConnected || epoch!==this.epoch)return;
+    const token=await this.request<{token:string;model:string;config:LiveConnectConfig}>(`/api/sessions/${browserSession.sessionId}/live-token`,{language});
     if(!this.wantConnected || epoch!==this.epoch)return;
     const {GoogleGenAI}=await import('@google/genai');
+    if(!this.wantConnected || epoch!==this.epoch)return;
     const ai=new GoogleGenAI({apiKey:token.token,httpOptions:{apiVersion:'v1beta'}});
     const config:LiveConnectConfig=this.resumptionHandle?{...token.config,sessionResumption:{...token.config.sessionResumption,handle:this.resumptionHandle}}:token.config;
     let resolveSetup!:()=>void;
@@ -122,17 +137,17 @@ export class LiveConsole {
       onmessage:(message:LiveServerMessage)=>{if(epoch!==this.epoch || !this.wantConnected)return;if(message.setupComplete)resolveSetup();this.handleMessage(message);},
       onerror:event=>{if(epoch===this.epoch){const error=new Error(event.message || 'आवाज़ का कनेक्शन नहीं चल पाया।');rejectSetup(error);this.showError(error);}},
       onclose:event=>{if(epoch!==this.epoch || !this.wantConnected)return;rejectSetup(new Error(event.reason || 'आवाज़ का कनेक्शन बंद हो गया।'));if(this.snapshot.connection==='connected')this.scheduleReconnect();},
-    }});}catch(cause){clearTimeout(timeout);this.setupReject=undefined;throw cause;}
+    }});}catch(cause){clearTimeout(timeout);if(this.setupReject===rejectSetup)this.setupReject=undefined;throw cause;}
     if(epoch!==this.epoch || !this.wantConnected){session.close();clearTimeout(timeout);return;}
     this.live=session;
-    try{await setup;}finally{clearTimeout(timeout);this.setupReject=undefined;}
+    try{await setup;}finally{clearTimeout(timeout);if(this.setupReject===rejectSetup)this.setupReject=undefined;}
     if(epoch!==this.epoch || !this.wantConnected){session.close();return;}
     this.retryCount=0;this.update({connection:'connected',error:undefined});
     if(!this.microphone){
       const microphone=new MicrophoneCapture();this.microphone=microphone;
       try{await microphone.start(bytes=>{if(this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});
         if(this.wantConnected && epoch===this.epoch)this.update({microphone:'listening'});else microphone.stop();
-      }catch(cause){microphone.stop();this.microphone=undefined;this.update({microphone:'paused'});this.showError(cause);}
+      }catch(cause){microphone.stop();if(!this.wantConnected || epoch!==this.epoch)return;if(this.microphone===microphone)this.microphone=undefined;this.update({microphone:'paused'});this.showError(cause);}
     }
   }
   private scheduleReconnect():void {
@@ -143,7 +158,7 @@ export class LiveConsole {
     void this.persistEvent({type:'interrupted'}).catch(()=>{});
     if(++this.retryCount>3){this.wantConnected=false;this.cleanupLive();this.update({connection:'error',microphone:'off'});this.showError(new Error('तीन कोशिशों के बाद भी आवाज़ नहीं जुड़ी। इंटरनेट जाँचें, फिर “बात शुरू करें” दबाएँ।'));return;}
     const old=this.live;this.live=undefined;this.epoch++;old?.close();
-    this.reconnectTimer=setTimeout(()=>{this.reconnectTimer=undefined;void this.openLive().catch(cause=>{this.showError(cause);this.scheduleReconnect();});},500*2**(this.retryCount-1));
+    this.reconnectTimer=setTimeout(()=>{this.reconnectTimer=undefined;const epoch=++this.epoch;void this.openLive(epoch).catch(cause=>{if(!this.wantConnected || epoch!==this.epoch)return;this.showError(cause);this.scheduleReconnect();});},500*2**(this.retryCount-1));
   }
   private handleMessage(message:LiveServerMessage):void {
     const event=extractLiveEvent(message);
@@ -207,7 +222,7 @@ export class LiveConsole {
       if(this.toolLedger.isPending(call.id) || call.name==='dispatch_bug_fix')this.applyToolResult(call.name,response);
       if(this.wantConnected && epoch===this.epoch && live && this.toolLedger.claimResponse(call.id))live.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response}]});
     }catch(cause){
-      if(!abort.signal.aborted){const error=errorMessage(cause);this.showError(cause);if(this.wantConnected && epoch===this.epoch && live && this.toolLedger.claimResponse(call.id))live.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response:{error}}]});}
+      if(!abort.signal.aborted){const error=localizeError(errorMessage(cause),this.snapshot.language);this.showError(cause);if(this.wantConnected && epoch===this.epoch && live && this.toolLedger.claimResponse(call.id))live.sendToolResponse({functionResponses:[{id:call.id,name:call.name,response:{error}}]});}
     }finally{this.pendingTools.delete(call.id);}
   }
   private applyToolResult(name:string,response:Record<string,unknown>):void {
@@ -230,17 +245,20 @@ export class LiveConsole {
   private async refreshJob(id:string):Promise<void>{try{const response=await this.request<FixJob|{job:FixJob}>(`/api/jobs/${encodeURIComponent(id)}`);const job='job' in response?response.job:response;this.update({job});}catch(cause){this.showError(cause);}}
   async sendText(text:string):Promise<void>{
     if(!this.live || this.snapshot.connection!=='connected')return;
+    const live=this.live,epoch=this.epoch;
     const pending=this.turns.finalize('user');if(pending)this.recordTurn(pending);
     const turn=this.turns.append('user',text,true);this.recordTurn(turn);
-    try{await this.persistChain;if(this.persistenceFailed)throw new Error('संदेश सेव नहीं हुआ। सहायता पेज दोबारा खोलें।');this.live.sendRealtimeInput({text});}catch(cause){this.showError(cause);}
+    try{await this.persistChain;if(!this.wantConnected || epoch!==this.epoch)return;if(this.persistenceFailed)throw new Error('संदेश सेव नहीं हुआ। सहायता पेज दोबारा खोलें।');live.sendRealtimeInput({text});}catch(cause){if(epoch===this.epoch)this.showError(cause);}
   }
   async toggleMicrophone():Promise<void>{
     if(!this.live || this.snapshot.connection!=='connected')return;
     if(this.snapshot.microphone==='listening'){this.microphone?.setEnabled(false);this.sendRealtime({audioStreamEnd:true});this.update({microphone:'paused'});return;}
+    const epoch=this.epoch,microphone=this.microphone || new MicrophoneCapture();
     try{
-      if(!this.microphone){const microphone=new MicrophoneCapture();this.microphone=microphone;await microphone.start(bytes=>{if(this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});}
-      this.microphone.setEnabled(true);this.update({microphone:'listening',error:undefined});
-    }catch(cause){this.microphone?.stop();this.microphone=undefined;this.showError(cause);}
+      if(!this.microphone){this.microphone=microphone;await microphone.start(bytes=>{if(epoch===this.epoch && this.snapshot.microphone==='listening')this.sendRealtime({audio:{data:bytesToBase64(bytes),mimeType:'audio/pcm;rate=16000'}});});}
+      if(!this.wantConnected || epoch!==this.epoch){microphone.stop();return;}
+      microphone.setEnabled(true);this.update({microphone:'listening',error:undefined});
+    }catch(cause){microphone.stop();if(!this.wantConnected || epoch!==this.epoch)return;if(this.microphone===microphone)this.microphone=undefined;this.showError(cause);}
   }
   async startVisual(source:'camera'|'screen'):Promise<void>{
     if(this.snapshot.connection!=='connected')return;
