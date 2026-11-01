@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-11-01T13:57:34+05:30",
+  "skill_repository": "https://github.com/google-gemini/gemini-skills",
+  "skill_commit": "39d81f4c7de5e56631d07e4ea766d3fe9752ce5d",
+  "sdk": "@google/genai@2.31.0",
+  "models": {
+    "live": "gemini-3.8-live",
+    "structured": "gemini-3.8-flash",
+    "repair": "antigravity-preview-09-2026"
+  },
+  "files": {
+    "src/server/provider.ts": "3423b0fbc4fbaf3a5b239b2e5a9dbbf7cfed13a5403acbe64b93e1a4cb89d536",
+    "src/server/runner.ts": "2397e4aa42d88fd27bdd20463ee981f19249205c2f3211380b9cb26a4878b1fd",
+    ".agents/skills/gemini-api-dev/SKILL.md": "aad59c38747c467911007d90b5a75707baa3bc662c129f5e94e8c6e4d9e407ae",
+    ".agents/skills/gemini-live-api-dev/SKILL.md": "00f63eafd2ca15b07421a0e744d37bd602463c08d1acafa7930f3a4d583b590f"
+  }
+}

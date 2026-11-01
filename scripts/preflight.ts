@@ -1,0 +1,17 @@
+import {config} from 'dotenv';
+import {GoogleGenAI} from '@google/genai';
+import {execFileSync} from 'node:child_process';
+import {GoogleProvider,MODELS} from '../src/server/provider.js';
+config({path:'.env.local',quiet:true});
+const key=process.env.GEMINI_API_KEY||'';
+function safe(e:unknown){return String(e instanceof Error?e.message:e).replaceAll(key||'__none__','[REDACTED]').slice(0,1200);}
+const result:Record<string,unknown>={timestamp:new Date().toISOString(),sdk:'2.31.0'};
+try{result.github=execFileSync('gh',['api','user','--jq','.login'],{encoding:'utf8',timeout:15000}).trim();}catch{result.github='not authenticated';}
+try{result.docker=execFileSync('docker',['version','--format','{{.Server.Version}}'],{encoding:'utf8',timeout:10000,stdio:['ignore','pipe','pipe']}).trim();}catch{result.docker='daemon unavailable';}
+if(!key){result.gemini='missing GEMINI_API_KEY';console.log(JSON.stringify(result,null,2));process.exit(1);}
+const p=new GoogleProvider(key);
+try{const token=await p.liveToken();result.liveToken='created';const client=new GoogleGenAI({apiKey:token.token,httpOptions:{apiVersion:'v1beta'}});let audioBytes=0;let inputParts=0;let transcript='';let done:()=>void=()=>{};const finished=new Promise<void>(resolve=>done=resolve);const session=await client.live.connect({model:token.model,config:token.config as any,callbacks:{onmessage:m=>{for(const part of m.serverContent?.modelTurn?.parts??[])if(part.inlineData?.data){audioBytes+=Buffer.from(part.inlineData.data,'base64').length;inputParts++;}transcript+=m.serverContent?.outputTranscription?.text??'';if(m.serverContent?.turnComplete)done();},onerror:e=>{result.liveError=safe(e);done();},onclose:()=>done()}});session.sendRealtimeInput({text:'नमस्ते। एक छोटे वाक्य में हिंदी में बताइए कि आप दुकान के ऐप की समस्या समझने में मदद कर सकती हैं।'});let timeout:ReturnType<typeof setTimeout>;await Promise.race([finished,new Promise<void>(r=>timeout=setTimeout(()=>{result.liveTimeout=true;r();},30000))]);clearTimeout(timeout!);session.close();result.live={model:MODELS.live,audio_bytes:audioBytes,parts:inputParts,hindi_transcript_received:/[\u0900-\u097f]/.test(transcript)};}catch(e){result.liveError=safe(e);}
+try{const b=await p.createBrief([{id:'probe-user',role:'user',text:'मैंने दो किलो चीनी बेची, लेकिन स्टॉक पंद्रह से सत्रह किलो हो गया। इसे तेरह किलो होना चाहिए था।',sequence:1,finalized:true,created_at:new Date().toISOString()}],[]);result.structuredBrief={valid:true,summary_hi:b.summary_hi,expected_hi:b.expected_hi,actual_hi:b.actual_hi};}catch(e){result.structuredError=safe(e);}
+if(process.argv.includes('--agent')){try{const x=await p.client.interactions.create({agent:MODELS.agent,input:'This is a capability preflight for a developer prototype. Run no shell commands and create no files. Reply with READY only.',environment:'remote',background:true,store:true});let current=x as any;const deadline=Date.now()+90000;while(['in_progress','queued'].includes(current.status)&&Date.now()<deadline){await new Promise(r=>setTimeout(r,2000));current=await p.client.interactions.get(current.id);}result.managedAgent={status:current.status,interaction_id:current.id,environment_id:current.environment_id,output:current.output_text};if(['in_progress','queued'].includes(current.status))await p.client.interactions.cancel(current.id);}catch(e){result.agentError=safe(e);}}
+console.log(JSON.stringify(result,null,2));
+if(result.liveError||result.structuredError||result.agentError||!(result.live as any)?.audio_bytes)process.exitCode=1;

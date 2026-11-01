@@ -1,0 +1,44 @@
+{
+  "name": "gemini-kirana-bugfix-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"tsx watch src/server/main.ts\" \"vite --host 127.0.0.1 --port 4300\"",
+    "dev:server": "tsx watch src/server/main.ts",
+    "build": "vite build && tsc -p tsconfig.server.json",
+    "start": "NODE_ENV=production node dist/server/server/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preflight": "tsx scripts/preflight.ts",
+    "probe": "tsx scripts/probes.ts",
+    "resume-preview": "tsx scripts/resume-preview.ts"
+  },
+  "dependencies": {
+    "@google/genai": "2.31.0",
+    "@octokit/rest": "^22.0.0",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/supertest": "^6.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.0.0",
+    "supertest": "^7.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.12"
+  }
+}

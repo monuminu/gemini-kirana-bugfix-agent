@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-11-01T13:57:34+05:30",
+  "media_source": "Synthesized Hindi microphone WAV and one-per-second canvas frames from a rendered Azure bug screenshot; real Gemini/Antigravity APIs.",
+  "job_id": "13705a29-3fe1-409d-b18a-9e03820a3eaf",
+  "status": "completed",
+  "stage": "preview_verified",
+  "base_commit": "8125b9eb73bcf3c4bfa1dfdcf66f20a0a74a0048",
+  "pr_url": "https://github.com/monuminu/kirana-saathi-demo/pull/1",
+  "pr_commit": "2ef6a473f60e4bd18d83d9655b8bf93712bf869e",
+  "artifact_sha256": "af64a43969a8776f8cc932bc04caff66efa2c06bab8afa21ac36df40f7a6cb8f",
+  "preview_url": "http://127.0.0.1:4310/",
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0
+    }
+  ],
+  "preview_initial_kg": 15,
+  "sale_kg": 2,
+  "preview_remaining_kg": 13,
+  "reload_preserved": true,
+  "original_replay": {
+    "passed": false,
+    "started_at": "2026-11-01T13:36:14+05:30",
+    "finished_at": "2026-11-01T13:52:24+05:30",
+    "outcome": "Actual Live report, read-back and approved repair dispatch succeeded. Original continuous UI wait timed out after the missing-browser preview failure."
+  },
+  "recovery": {
+    "passed": true,
+    "finished_at": "2026-11-01T13:49:12+05:30",
+    "new_agent_or_pr": false
+  },
+  "manual_remaining": [
+    "Authenticated AI Studio zero-shot/few-shot/Build/export journey",
+    "Physical shopkeeper microphone/accent, screen picker, webcam, shop noise and interruption",
+    "Deliberate real-provider quota/lost-create/cancellation/stale-base failure drills"
+  ]
+}
