@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { validatePatch, validateLockfile, restrictedDockerArgs } from '../src/server/docker';
+import { validatePatch, validateLockfile, restrictedDockerArgs, assertInventoryRepairScope } from '../src/server/docker';
 const patch = (path: string, extra = '') => `diff --git a/${path} b/${path}\nindex 1111111..2222222 100644\n--- a/${path}\n+++ b/${path}\n@@ -1 +1 @@\n-export const x = 1;\n+export const x = 2;\n${extra}`;
 describe('patch trust boundary', () => {
   it('accepts a minimal production diff and returns its exact paths', () => expect(validatePatch(patch('src/inventory.ts'))).toEqual(['src/inventory.ts']));
+  it('rejects unrelated production files even if their tests could pass',()=>expect(()=>validatePatch(patch('src/App.tsx'))).toThrow());
   it.each(['package.json', '.env.local', 'src/inventory.regression.test.ts', 'src/test-setup.ts', 'src/../package.json', 'src/.hidden.ts'])('rejects forbidden path %s', path => expect(() => validatePatch(patch(path))).toThrow());
   it('rejects rename, symlink, and binary operations', () => {
     expect(() => validatePatch(patch('src/inventory.ts', 'new file mode 120000\n'))).toThrow();
@@ -19,6 +20,14 @@ describe('patch trust boundary', () => {
     expect(args).toEqual(expect.arrayContaining(['--network=none', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=1000:1000']));
     expect(args.join(' ')).not.toMatch(/GEMINI|GITHUB|\.env|--env=HOME|\/Users\/[^ ]+\/:/);
   });
+});
+
+describe('fixed demo repair scope',()=>{
+ const before='// inventory module\nexport function recordMovement() {\n  if (type === "in") {\n    stockAfter = product.stock + baseQuantity;\n  } else {\n    stockAfter = product.stock + baseQuantity;\n  }\n  if (!Number.isSafeInteger(stockAfter)) throw new Error("overflow");\n}\n';
+ const after=before.replace('  } else {\n    stockAfter = product.stock + baseQuantity;','  } else {\n    stockAfter = product.stock - baseQuantity;');
+ it('permits the submitted arithmetic change inside the existing sale branch',()=>expect(()=>assertInventoryRepairScope(before,after)).not.toThrow());
+ it('rejects unrelated edits in the same module',()=>expect(()=>assertInventoryRepairScope(before,after.replace('// inventory module','// unrelated feature'))).toThrow());
+ it('rejects added side effects inside the sale branch',()=>expect(()=>assertInventoryRepairScope(before,after.replace('stockAfter = product.stock - baseQuantity;','stockAfter = product.stock - baseQuantity;\n    fetch("https://example.com");'))).toThrow());
 });
 
 import { assertCompleteCandidateTests } from '../src/server/docker';

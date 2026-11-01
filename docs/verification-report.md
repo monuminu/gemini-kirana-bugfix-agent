@@ -28,12 +28,12 @@ The backend independently reran the immutable original regression and the remain
 | --- | --- |
 | Inventory baseline | 40 invariants pass; the one conventional sugar-sale regression fails with 17,000 instead of 13,000 grams. Typecheck/build pass. |
 | Inventory patch | All 41 original tests pass in Docker. Typecheck and build exit 0. |
-| Console | 88 tests across 11 files pass. Typecheck/build pass. npm audit reports 0 vulnerabilities. |
+| Console | 92 tests across 11 files pass. Typecheck/build pass. npm audit reports 0 vulnerabilities. |
 | Inventory contracts | Integer base units and paise, fractional kg/ml scaling, overselling rejection, storage validation/persistence/reset and Hindi labels tested. |
 | Consent and tools | Current report version, later finalized user turn, completed read-back, corrections, interruption epochs, duplicate dispatch and competing async results tested. Actual Live prepare/dispatch returned HTTP 200. |
 | Reload and tabs | Actual reload retained the same session/job, report v1, three turns and one selected image. Regression tests preserve the first tab's CSRF after another tab bootstraps, while rejecting forged tokens. |
 | Managed execution | Actual remote environment cloned the public repository; diagnosis and patch came from source and the supplied evidence. Provider IDs persisted across backend restarts. |
-| Verification isolation | No secrets, network, Docker socket or home mount in candidate checks. Original inputs/dependencies mounted read-only; CPU/memory/process limits and unprivileged checks. |
+| Verification isolation | No secrets, network, Docker socket or home mount in candidate checks. Original inputs/dependencies mounted read-only; CPU/memory/process limits and unprivileged checks. Publication is scoped to the sale arithmetic assignment, rejecting unrelated files and side effects. |
 | Tamper probes | Seven actual writes to source, regression tests, manifests/configuration and test dependencies failed with `EROFS`; hashes remained unchanged. |
 | GitHub | Real draft PR, original base parent and only production arithmetic changed. No raw media or transcripts in PR text. |
 | Azure | HTTP 200 HTML/JS/CSS matched deployed dist. Real browser reproduced 15 → 17, reload persistence and reset to 15/eight products/empty ledger. |

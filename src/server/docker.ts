@@ -20,7 +20,7 @@ export function validatePatch(patch:string):string[] {
   if (!headers.length) throw new Error('A git-format patch is required.');
   const files:string[]=[];
   for (const [,before,after] of headers) {
-    if (before!==after || !/^src\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.(?:tsx?|css)$/.test(after) || /(?:^|\/)(?:test[-_]setup|[^/]*\.(?:test|spec)(?:\.|$))/.test(after) || /\.(?:test|spec)\./.test(after)) throw new Error(`Forbidden patch path: ${after}`);
+    if (before!==after || after!=='src/inventory.ts') throw new Error(`Forbidden patch path: ${after}`);
     if (files.includes(after)) throw new Error('Duplicate patch path.');
     files.push(after);
   }
@@ -29,6 +29,15 @@ export function validatePatch(patch:string):string[] {
     if (p==='/dev/null' || !files.includes(p.replace(/^[ab]\//,''))) throw new Error(`Forbidden ${prefix} patch path.`);
   }
   return files;
+}
+
+/** This release approves only the inventory sale arithmetic, without prescribing its fix. */
+export function assertInventoryRepairScope(before:string,after:string):void {
+  const region=/^([\s\S]*?\nexport function recordMovement\([\s\S]*?\n  } else {\n)([\s\S]*?)(\n  }\n  if \(!Number\.isSafeInteger\(stockAfter\)\)[\s\S]*)$/;
+  const original=region.exec(before);
+  if(!original||!after.startsWith(original[1])||!after.endsWith(original[3]))throw new Error('Repair changes unrelated inventory code outside the approved sale branch.');
+  const arithmetic=after.slice(original[1].length,after.length-original[3].length);
+  if(!/^\s*stockAfter\s*=\s*(?:product\.stock|baseQuantity|[+\-*/()\s0-9.])+;\s*$/.test(arithmetic))throw new Error('Repair may change only the sale stock arithmetic assignment.');
 }
 
 export function validateLockfile(lock:unknown):void {
@@ -248,6 +257,7 @@ export async function verifyPatch(repository:string,baseSha:string,patch:string,
   await checked('git',['apply','--check',patchFile],candidateDir,control);await checked('git',['apply',patchFile],candidateDir,control);
   const diffPaths=(await checked('git',['diff','--name-only'],candidateDir,control)).stdout.trim().split('\n').filter(Boolean);
   if(JSON.stringify([...diffPaths].sort())!==JSON.stringify([...paths].sort())) throw new Error('Applied patch file set differs from the declared set.');
+  assertInventoryRepairScope(await fs.readFile(path.join(baselineDir,'src/inventory.ts'),'utf8'),await fs.readFile(path.join(candidateDir,'src/inventory.ts'),'utf8'));
   const baseDigest=await checkoutDigest(baselineDir,control),candidateDigest=await checkoutDigest(candidateDir,control);
   const files=await Promise.all(paths.map(async p=>({path:p,content:await fs.readFile(path.join(candidateDir,p),'utf8')})));
   const image=await dockerImage(jobDir,control);

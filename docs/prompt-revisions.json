@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-11-01T13:57:34+05:30",
+  "captured_at": "2026-11-01T14:05:00+05:30",
   "skill_repository": "https://github.com/google-gemini/gemini-skills",
   "skill_commit": "39d81f4c7de5e56631d07e4ea766d3fe9752ce5d",
   "sdk": "@google/genai@2.31.0",

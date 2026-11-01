@@ -6,7 +6,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## SDK release selected from GitHub was not published to npm
 
 - ID: F01
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Discovery and onboarding
 - Severity: P2; frequency: Exact-version lookup reproduced; one implementation journey; time lost: 0 minutes
@@ -28,7 +28,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## AI Studio Build required a signed-in browser
 
 - ID: F02
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Discovery and onboarding
 - Severity: P3; frequency: One browser navigation; time lost: 0 minutes
@@ -50,7 +50,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Quota dashboard and key creation UX remain pending
 
 - ID: F03
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: not_tested
 - Stage: Discovery and onboarding
 - Severity: P3; frequency: Not executed; time lost: 0 minutes
@@ -204,7 +204,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Consent and reload races were implementation defects found in review
 
 - ID: F10
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Advanced features
 - Severity: P1; frequency: Deterministic tests plus two real reload exercises; time lost: 0 minutes
@@ -213,7 +213,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 
 **Expected:** Only the current fully read-back brief and a subsequent explicit turn should dispatch once; reload should recover the same job.
 
-**Actual:** Initial application code needed stable turn ordering, snapshot checks, a report generation counter and read-back epoch. These were fixed and covered by domain tests. Real reload retained the same session/job, three turns and one image. This finding belongs to this application, not Gemini.
+**Actual:** Initial application code needed stable turn ordering, snapshot checks, a report generation counter and read-back epoch. These were fixed and covered by domain tests. Real reload retained the same session/job, three turns and one image. This finding belongs to this application, not Gemini. Final review also found that another help tab revoked the first tab CSRF token and a superseded report blocked an already published preview. Both were fixed with regression tests.
 
 **Workaround:** Reject stale asynchronous results; finalize turns once; rotate CSRF while retaining the session and durable job.
 
@@ -226,7 +226,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Docker was installed but waiting for initial setup
 
 - ID: F11
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Advanced features
 - Severity: P2; frequency: One workstation setup; time lost: 0 minutes
@@ -248,7 +248,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Local Docker credentials and npm transport blocked isolated setup
 
 - ID: F12
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Advanced features
 - Severity: P2; frequency: Repeated setup attempts in this workstation environment; time lost: 0 minutes
@@ -292,7 +292,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Independent checks preserved the original regression and exact artifact
 
 - ID: F14
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: observed
 - Stage: Errors and observability
 - Severity: P3; frequency: Actual managed patch plus controlled verifier fixture and seven tamper probes; time lost: 0 minutes
@@ -336,7 +336,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Zero-shot Studio prototype, few-shot comparison and original export need a manual pass
 
 - ID: F16
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: not_tested
 - Stage: Playground and transition to code
 - Severity: P3; frequency: Not executed; time lost: 0 minutes
@@ -358,7 +358,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Physical shopkeeper microphone, webcam, interruption and shop noise remain manual
 
 - ID: F17
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: not_tested
 - Stage: Advanced features
 - Severity: P3; frequency: Manual scenarios not executed; time lost: 0 minutes
@@ -380,7 +380,7 @@ Time-lost values of 0 mean no separately measured time-loss estimate was recorde
 ## Destructive failure and rate-limit paths have tests but need real-provider drills
 
 - ID: F18
-- Time: 2026-11-01T13:57:34+05:30
+- Time: 2026-11-01T14:05:00+05:30
 - Classification: not_tested
 - Stage: Errors and observability
 - Severity: P3; frequency: Unit-tested; real failure drills not executed; time lost: 0 minutes
