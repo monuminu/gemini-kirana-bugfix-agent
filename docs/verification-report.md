@@ -100,7 +100,7 @@ Publicly shareable evidence: `verification-receipt.json`, `prompt-revisions.json
 | CLIENT_TESTS_01 | Repository client audio/events/recovery tests |
 | RUNNER_TESTS_01 | Repository Docker/GitHub/runner tests |
 | PUBLICATION_01 | Console project `work/13705a29-3fe1-409d-b18a-9e03820a3eaf/publication.json`, draft PR #1 |
-| PREVIEW_RECOVERY_01 | Console project `work/e2e-recovery/result.json` and job logs |
+| PREVIEW_RECOVERY_01 | Console project `work/e2e-recovery-initial/result.json` (initial recovery), `work/e2e-recovery/result.json` (production UI recheck), and job logs |
 | DOCKER_VERIFIER_01 | Console project job `logs/`, `package-cache/`, verification fixture |
 | TAMPER_01 | Console project `work/verification-fixture/read-only-tamper.json` |
 | DOCKER_SETUP_01 | `work/docker-startup-diagnosis.md` |
