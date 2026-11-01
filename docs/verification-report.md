@@ -77,6 +77,8 @@ Search and URL probes use a separate Interactions path. They do not add URL cont
 
 These timestamps measure specific events, not general voice latency or a statistically representative product benchmark. Later releases persist request durations and stage changes in SQLite; they do not reconstruct missing historical events from this run.
 
+A final check of the built production console also passed: the same saved session and PR links restored, the preview showed 13 kg after reload, and no Live/token/tool request or browser error occurred. This later check is recorded separately from the original media replay.
+
 ## Remaining manual acceptance
 
 The signed-in AI Studio zero-shot prototype, Hindi few-shot comparison, original Get Code/Build export and context-drift exercise remain unexecuted. The available browser redirected Build to Google sign-in. There is no invented original export.
