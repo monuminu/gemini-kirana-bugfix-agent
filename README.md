@@ -1,6 +1,6 @@
 # किराना साथी — Hindi voice bug repair
 
-A local developer tool that listens to a Hindi or English bug report, receives screen/camera frames through Gemini Live, prepares an agreed bug brief, and dispatches managed Antigravity to repair a public kirana inventory application. The backend independently verifies the patch before creating a draft GitHub PR and an isolated preview.
+A local developer tool that listens to a bug report, receives screen/camera frames through Gemini Live, prepares an agreed bug brief, and dispatches managed Antigravity to repair a public kirana inventory application. The backend independently verifies the patch before creating a draft GitHub PR and an isolated preview.
 
 Inventory: [public repository](https://github.com/monuminu/kirana-saathi-demo) and [Azure demo](https://thankful-bay-05dfcb500.1.azurestaticapps.net/).
 
