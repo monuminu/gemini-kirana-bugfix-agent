@@ -98,33 +98,3 @@ The selected console language also configures Gemini's speech. Changing language
 7. Open the draft PR and separate fixed preview. The preview must show 15 − 2 = 13 kg and retain 13 kg after reload. The PR still requires review before merging.
 
 The microphone can be paused. Typed Hindi works through the same Live session. Screen and webcam are mutually exclusive visual streams, capped at one frame per second. A page refresh restores the existing local session and active job without opening the microphone.
-
-## Interfaces and durable execution
-
-The browser uses same-origin cookie sessions and CSRF-protected POST requests. Live exposes `prepare_bug_fix`, `dispatch_bug_fix`, `get_fix_status`, and `cancel_bug_fix`. Read-back completion and a later explicit user turn are required before dispatch. New corrections, interruptions and stale asynchronous results cannot approve an old brief. A confirmed report dispatches once.
-
-SQLite persists reports, transcript turns, evidence references, jobs, provider IDs, stage changes, request durations and friction notes. Timing records exclude request bodies, queries, cookies and headers. There is one active repair, a 15-minute deadline and at most two revision rounds after the initial attempt. A known provider interaction resumes after backend restart; an unresolved initial or continuation creation requires attention instead of repeating a possibly accepted request.
-
-A second help tab retains the same owner session without revoking the first tab's CSRF token. Up to 64 bootstrap tokens remain valid within the 24-hour local session lifetime.
-
-If publication succeeded but preview setup failed, fix the local prerequisite and run `npm run resume-preview -- <job-id>`, then reload the help page. This operator command only rechecks the saved patch and exact published commit. It grants a new 15-minute preview verification budget, records the original deadline, and creates no agent, branch or PR. Cancelled and active jobs cannot be resumed this way.
-
-Antigravity receives original Hindi statements, an English technical brief and selected inline JPEGs. It gets a public repository clone and no GitHub write credential. A scoped `publish_patch` request submits an ordinary git diff; publication happens on the backend.
-
-Docker verification mounts original source, tests, manifests and configuration read-only. Only dependency setup and dedicated cache/output directories are writable. It checks the exact baseline failure, every candidate assertion, type checking and build output. Forbidden patches, failed checks, stale base commits or cancellation prevent subsequent publication. See [runner details](docs/runner.md).
-
-## Friction evidence
-
-Use **फीडबैक नोट** to record observations, hypotheses and untested scenarios, then export Markdown or CSV. Notes have Asia/Kolkata timestamps, reproduction, expectation, actual outcome, severity/frequency/time lost, workaround and product recommendation. Runtime transcripts and selected frames remain local. Public PRs contain sanitized synthetic reproduction and test evidence.
-
-The requested Google skills are pinned in `.agents/skills`. The running SDK is **@google/genai 2.31.0**: planned 2.32.0 was not published to npm. The version choice and actual API warnings are recorded in the friction report.
-
-## Deployment and scope
-
-The companion inventory app is deployed separately to Azure Static Web Apps. This console remains local. A future authenticated Cloud Run deployment is described in [deployment guide](docs/cloud-run.md); its infrastructure and account setup are not part of this release.
-
-Read the [demo runbook](docs/demo-runbook.md), [verification report](docs/verification-report.md), [Markdown friction log](docs/friction-log.md), [CSV log](docs/friction-log.csv), [roadmap brief](docs/roadmap-brief.md) and [prompt/skill revisions](docs/prompt-revisions.json). The actual managed repair produced [draft PR #1](https://github.com/monuminu/kirana-saathi-demo/pull/1) and an exact-commit local preview. The first continuous browser wait failed after missing browser setup; recovery of that same publication passed.
-
-A synthesized Hindi replay is an automated audio fixture, not evidence that a shopkeeper's physical microphone or accent was tested. AI Studio Build/export work requires a signed-in browser; unexecuted steps are explicitly marked untested.
-
-The later language update is documented in [audience language update](docs/language-update.md). It preserves the original managed Antigravity arithmetic fix and records the refreshed preview's current commit and artifact separately from the initial run.
